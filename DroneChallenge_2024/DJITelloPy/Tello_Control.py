@@ -23,7 +23,7 @@ class TelloC:
         self.image_label = tki.Label(self.root)
         self.image_label.pack()
 
-        self.arucoId = 1     
+        self.arucoId = 3     
         self.tello = Tello()
         
         self.frame = None  # frame read from h264decoder and used for pose recognition 
@@ -100,6 +100,15 @@ class TelloC:
                     T1, T2, yaw = self.controlArgs
                     if self.controlEnabled:
                         self.controlAll(T1, T2, yaw)
+                        #time.sleep(0.01)
+                        #Rmat, Tmat = self.detectAruco(5)
+                        #T1, T2, yaw = self.transformArucoToDroneCoordinates(self.detectAruco(5))
+                        #time.sleep(0.01)
+                        #print("T1: ")
+                        #print(T1)
+
+                        #self.tello.
+                        #self.tello.curve_xyz_speed(100,100,100,202,200,200,10)
                     else:
                         time.sleep(0.01)
                     self.controlArgs = None  # Reset arguments
@@ -373,6 +382,8 @@ class TelloC:
                 time.sleep(0.5)
                 self.state = 1
             self.oldTime = currTime
+
+            
 
         # Premik dol
         elif error <= -0.2: 

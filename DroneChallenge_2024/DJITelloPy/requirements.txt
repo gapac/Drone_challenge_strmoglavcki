@@ -4,4 +4,4 @@ pillow==8.4.0
 opencv-python
 opencv-contrib-python
 matplotlib
-pandas
+pandas  

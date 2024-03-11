@@ -5,6 +5,7 @@ import datetime
 import os
 from os import path
 from cv2 import aruco
+#import cv2.aruco as aruco
 import matplotlib as mpl
 import pandas as pd
 import numpy as np
@@ -23,7 +24,7 @@ class TelloC:
         self.image_label = tki.Label(self.root)
         self.image_label.pack()
 
-        self.arucoId = 3     
+        self.arucoId = 1     
         self.tello = Tello()
         
         self.frame = None  # frame read from h264decoder and used for pose recognition 
@@ -100,15 +101,6 @@ class TelloC:
                     T1, T2, yaw = self.controlArgs
                     if self.controlEnabled:
                         self.controlAll(T1, T2, yaw)
-                        #time.sleep(0.01)
-                        #Rmat, Tmat = self.detectAruco(5)
-                        #T1, T2, yaw = self.transformArucoToDroneCoordinates(self.detectAruco(5))
-                        #time.sleep(0.01)
-                        #print("T1: ")
-                        #print(T1)
-
-                        #self.tello.
-                        #self.tello.curve_xyz_speed(100,100,100,202,200,200,10)
                     else:
                         time.sleep(0.01)
                     self.controlArgs = None  # Reset arguments
@@ -140,7 +132,8 @@ class TelloC:
         elif key == 'r':
             self.tello.move_up(30)
         elif key == 'f':
-            self.tello.move_down(30)
+            self.tello.flip('f')
+            #self.tello.move_down(30)
         elif key == 'o':
             self.tello.takeoff()
         elif key == 'p':
@@ -260,7 +253,7 @@ class TelloC:
             for i in range(len(ids)):
                 if ids[i] == arucoId:
                     c = corners[i]
-                    rvec, tvec,_ = aruco.estimatePoseSingleMarkers(c, 0.10, self.cameraMatrix, self.distCoeffs)
+                    rvec, tvec, _ = cv2.aruco.estimatePoseSingleMarkers(c, 0.10, self.cameraMatrix, self.distCoeffs)
                     
                     if rvec is not None and tvec is not None:
                         cv2.drawFrameAxes(self.frameCopy, self.cameraMatrix, self.distCoeffs, rvec, tvec, 0.20)  
@@ -332,7 +325,15 @@ class TelloC:
                     self.oldTime = currTime
             else:
                 time.sleep(self.waitSec)
-                self.tello.send_rc_control(0,0,0,0)
+
+                #-------------Tu nt mors pisat kodo, nevem glih ka je uno odzgor------------------
+
+
+                #self.tello.send_rc_control(0,0,0,0)
+
+                #v funkciji sem spremenil da je tipka f flip.
+                self.on_key_press('w' or 'a' or 's' or 'd' or 'e' or 'q' or 'r' or 'f' or 'o' or 'p')
+                
                 self.oldTime = currTime
 
             if self.prev_T1_filtered is None:
@@ -382,8 +383,6 @@ class TelloC:
                 time.sleep(0.5)
                 self.state = 1
             self.oldTime = currTime
-
-            
 
         # Premik dol
         elif error <= -0.2: 

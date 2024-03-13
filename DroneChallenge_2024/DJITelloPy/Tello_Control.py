@@ -58,7 +58,7 @@ class TelloC:
 
         self.controlEnabled = True
         self.takeoffEnabled = True
-        self.landEnabled = True
+        self.landEnabled = False
 
         self.cur_fps = 0 
         self.frame_count = 0
@@ -132,10 +132,14 @@ class TelloC:
         elif key == 'r':
             self.tello.move_up(30)
         elif key == 'f':
+            self.tello.move_down('f')
+        elif key == '1':
             self.tello.flip('f')
             #self.tello.move_down(30)
         elif key == 'o':
             self.tello.takeoff()
+        elif key == 'x':
+            self.tello.emergency()
         elif key == 'p':
             self.tello.land()
             self.tello.end
@@ -310,32 +314,16 @@ class TelloC:
             self.frame_count = 0
             self.last_fps_calculation = time.time()    
 
+            print('T1: ', T1)
+            print('T2: ', T2)
+            print('yaw: ', yaw)
+
         if self.tello.is_flying and T1 is not None and T2 is not None and yaw is not None and self.cur_fps > 10:
-            if (currTime - self.oldTime) > self.waitSec:
-                if self.state==1:
-                    self.heightC(T1,yaw)
-                elif self.state==2:                  
-                    self.distC(T1,yaw,0.5)
-                elif self.state==3:               
-                    self.lefrigC(T1,yaw)         
-                elif self.state==4:   
-                    self.yawC(T1,yaw)
-                else:
-                    self.tello.send_rc_control(0,0,0,0)
-                    self.oldTime = currTime
-            else:
-                time.sleep(self.waitSec)
 
-                #-------------Tu nt mors pisat kodo, nevem glih ka je uno odzgor------------------
-
-
-                self.tello.send_rc_control(0,0,0,0)
-
-                #v funkciji sem spremenil da je tipka f flip.
-                self.on_key_press('w' or 'a' or 's' or 'd' or 'e' or 'q' or 'r' or 'f' or 'o' or 'p')
+            #v funkciji sem spremenil da je tipka f flip.
+            #self.on_key_press('w' or 'a' or 's' or 'd' or 'e' or 'q' or 'r' or 'f' or 'o' or 'p')
                 
-                self.oldTime = currTime
-
+                
             if self.prev_T1_filtered is None:
                 self.prev_T1_filtered = T1
             if self.prev_T2_filtered is None:
@@ -349,19 +337,37 @@ class TelloC:
             self.prev_T1_filtered = T1_filtered
             self.prev_T2_filtered = T2_filtered
 
+
+            #Best regulator ever
+            
+            if (currTime - self.oldTime) > 0.5:
+                Kp = 10
+
+                NaprejNazaj = T2_filtered[0]*Kp
+
+                LevoDesno = -T2_filtered[1]*Kp
+
+                GorDol = T2_filtered[2]*Kp
+
+                #jo = yaw*Kp
+
+                self.tello.send_rc_control(int(LevoDesno), int(NaprejNazaj), int(GorDol), 0)
+
+
             # Check if T1_filtered is less than 2 cm away from its last filtered value
-            if self.last_call_T1_filtered is not None:
-                distance = np.linalg.norm(T1_filtered - self.last_call_T1_filtered)
-                if distance < 0.01:  # Less than 1 cm
-                    if self.Step_1 and self.state==0:
-                        self.Step_1 = False
-                        T1_f_cm = [int(x * 100) for x in T1_filtered]
-                        T2_f_cm = [int(x * 100) for x in T2_filtered]
-                        print("T1_f_cm",T1_f_cm)
-                        print("T2_f_cm",T2_f_cm)
-                        self.tello.curve_xyz_speed(T1_f_cm[0], T1_f_cm[1], T1_f_cm[2], T2_f_cm[0], T2_f_cm[1], T2_f_cm[2], 10)
+            #if self.last_call_T1_filtered is not None:
+            #    distance = np.linalg.norm(T1_filtered - self.last_call_T1_filtered)
+            #    if distance < 0.01:  # Less than 1 cm
+            #        if self.Step_1 and self.state==0:
+            #            self.Step_1 = False
+            #            T1_f_cm = [int(x * 100) for x in T1_filtered]
+            #            T2_f_cm = [int(x * 100) for x in T2_filtered]
+            #            print("T1_f_cm",T1_f_cm)
+            #            print("T2_f_cm",T2_f_cm)
+            #           self.tello.curve_xyz_speed(T1_f_cm[0], T1_f_cm[1], T1_f_cm[2], T2_f_cm[0], T2_f_cm[1], T2_f_cm[2], 10)
 
             # Update the last call filtered value of T1 for the next comparison
+                self.oldTime = currTime
             self.last_call_T1_filtered = T1_filtered
         self.controlEnabled = True
 

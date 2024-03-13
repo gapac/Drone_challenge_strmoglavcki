@@ -339,19 +339,28 @@ class TelloC:
 
 
             #Best regulator ever
-            
-            if (currTime - self.oldTime) > 0.5:
-                Kp = 10
+            if (currTime - self.oldTime) > 0.1:
+                if(T2_filtered[0] > 1.3):
+                    Kp = 7
 
-                NaprejNazaj = T2_filtered[0]*Kp
+                    NaprejNazaj = T2_filtered[0]*Kp
+                    print("NaprejNazaj: ", NaprejNazaj)
 
-                LevoDesno = -T2_filtered[1]*Kp
+                    LevoDesno = -T2_filtered[1]*40
+                    print("LevoDesno: ", LevoDesno)
 
-                GorDol = T2_filtered[2]*Kp
+                    GorDol = (T2_filtered[2]+0.2)*100
+                    print("GorDol: ", GorDol)
 
-                #jo = yaw*Kp
+                    #jo = yaw*Kp
 
-                self.tello.send_rc_control(int(LevoDesno), int(NaprejNazaj), int(GorDol), 0)
+                    self.tello.send_rc_control(int(LevoDesno), int(NaprejNazaj), int(GorDol), 0)
+                #else:
+                    ##self.tello.send_rc_control(0,20,0,0)
+                    #time.sleep(2000)
+                    #self.tello.send_rc_control(0,0,0,0)
+                    #time.sleep(2000)
+                    #self.tello.land()
 
 
             # Check if T1_filtered is less than 2 cm away from its last filtered value

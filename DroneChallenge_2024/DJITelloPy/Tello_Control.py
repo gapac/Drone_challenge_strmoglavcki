@@ -329,7 +329,7 @@ class TelloC:
                 #-------------Tu nt mors pisat kodo, nevem glih ka je uno odzgor------------------
 
 
-                #self.tello.send_rc_control(0,0,0,0)
+                self.tello.send_rc_control(0,0,0,0)
 
                 #v funkciji sem spremenil da je tipka f flip.
                 self.on_key_press('w' or 'a' or 's' or 'd' or 'e' or 'q' or 'r' or 'f' or 'o' or 'p')

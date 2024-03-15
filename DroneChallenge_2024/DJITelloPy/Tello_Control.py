@@ -54,6 +54,7 @@ class TelloC:
         self.Step_1 = True
         self.prev_T1_filtered = None
         self.prev_T2_filtered = None
+        self.prev_yaw_filtered = None
         self.last_call_T1_filtered = None
 
         self.controlEnabled = True
@@ -308,15 +309,15 @@ class TelloC:
         # Calculate and print FPS every 2 seconds
         if time.time() - self.last_fps_calculation >= 2:
             self.cur_fps = self.frame_count / (time.time() - self.last_fps_calculation)
-            print(f"FPS: {self.cur_fps:.2f}")
+            #print(f"FPS: {self.cur_fps:.2f}")
 
             # Reset the frame count and last FPS calculation time
             self.frame_count = 0
             self.last_fps_calculation = time.time()    
 
-            print('T1: ', T1)
-            print('T2: ', T2)
-            print('yaw: ', yaw)
+            #print('T1: ', T1)
+            #print('T2: ', T2)
+            #print('yaw: ', yaw)
 
         if self.tello.is_flying and T1 is not None and T2 is not None and yaw is not None and self.cur_fps > 10:
 
@@ -328,34 +329,44 @@ class TelloC:
                 self.prev_T1_filtered = T1
             if self.prev_T2_filtered is None:
                 self.prev_T2_filtered = T2
+            if self.prev_yaw_filtered is None:
+                self.prev_yaw_filtered = yaw
             
             # Apply low pass filter
             T1_filtered = 0.1 * T1 + 0.9 * self.prev_T1_filtered
             T2_filtered = 0.1 * T2 + 0.9 * self.prev_T2_filtered
+            yaw_filtered = 0.1 * yaw + 0.9 * self.prev_yaw_filtered
 
             # Update the previous filtered values for the next call
             self.prev_T1_filtered = T1_filtered
             self.prev_T2_filtered = T2_filtered
+            self.prev_yaw_filtered = yaw_filtered
 
 
             #Best regulator ever
-            if (currTime - self.oldTime) > 0.1:
-                if(T2_filtered[0] > 1.3):
-                    Kp = 7
+            if (currTime - self.oldTime) > 0.05:
+                if(T2_filtered is not None and T2_filtered[0] > 1.4):
 
-                    NaprejNazaj = T2_filtered[0]*Kp
-                    print("NaprejNazaj: ", NaprejNazaj)
+                    NaprejNazaj = T2_filtered[0]*13
+                    #print("NaprejNazaj: ", NaprejNazaj)
 
-                    LevoDesno = -T2_filtered[1]*40
-                    print("LevoDesno: ", LevoDesno)
+                    LevoDesno = -T2_filtered[1]*70
+                    #print("LevoDesno: ", LevoDesno)
 
-                    GorDol = (T2_filtered[2]+0.2)*100
-                    print("GorDol: ", GorDol)
+                    GorDol = (T2_filtered[2]+0.2)*70
+                    #print("GorDol: ", GorDol)
 
-                    #jo = yaw*Kp
+                    #print("Yaw: ",yaw_filtered)
+                    print("T2_filtered: ",T2_filtered)
+                    print("T1_filtered: ",T1_filtered)
+                    jo = -yaw_filtered*1
 
-                    self.tello.send_rc_control(int(LevoDesno), int(NaprejNazaj), int(GorDol), 0)
-                #else:
+                    self.tello.send_rc_control(int(LevoDesno), int(NaprejNazaj), int(GorDol), int(jo))
+                elif(T2_filtered is not None and T2_filtered[0] < 1.4):
+                    self.arucoId = self.arucoId + 1
+                    print("Mennjava znacke - Aruco ID: ",self.arucoId)
+            
+
                     ##self.tello.send_rc_control(0,20,0,0)
                     #time.sleep(2000)
                     #self.tello.send_rc_control(0,0,0,0)
@@ -376,7 +387,8 @@ class TelloC:
             #           self.tello.curve_xyz_speed(T1_f_cm[0], T1_f_cm[1], T1_f_cm[2], T2_f_cm[0], T2_f_cm[1], T2_f_cm[2], 10)
 
             # Update the last call filtered value of T1 for the next comparison
-                self.oldTime = currTime
+            self.oldTime = currTime
+
             self.last_call_T1_filtered = T1_filtered
         self.controlEnabled = True
 

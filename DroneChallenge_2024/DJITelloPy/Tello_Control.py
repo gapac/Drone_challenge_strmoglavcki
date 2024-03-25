@@ -55,6 +55,19 @@ class TelloC:
         self.prev_T1_filtered = None
         self.prev_T2_filtered = None
         self.prev_yaw_filtered = None
+        #add T11-T24
+        self.prev_T11 = None
+        self.prev_T12 = None
+        self.prev_T13 = None
+        self.prev_T14 = None
+
+        self.prev_T21 = None
+        self.prev_T22 = None
+        self.prev_T23 = None
+        self.prev_T24 = None
+
+        
+
         self.last_call_T1_filtered = None
 
         self.controlEnabled = True
@@ -155,7 +168,7 @@ class TelloC:
             time.sleep(0.5)  # Give some time for the stream to start
             
             # Variables to control the FPS
-            fps_limit = 30
+            fps_limit = 20
             time_per_frame = 1.0 / fps_limit
             last_time = time.time()
             start_time = last_time
@@ -309,7 +322,7 @@ class TelloC:
         # Calculate and print FPS every 2 seconds
         if time.time() - self.last_fps_calculation >= 2:
             self.cur_fps = self.frame_count / (time.time() - self.last_fps_calculation)
-            #print(f"FPS: {self.cur_fps:.2f}")
+            print(f"FPS: {self.cur_fps:.2f}")
 
             # Reset the frame count and last FPS calculation time
             self.frame_count = 0
@@ -320,51 +333,82 @@ class TelloC:
             #print('yaw: ', yaw)
 
         if self.tello.is_flying and T1 is not None and T2 is not None and yaw is not None and self.cur_fps > 10:
-
-            #v funkciji sem spremenil da je tipka f flip.
+            print(f"FPS: {self.cur_fps:.2f}")
             #self.on_key_press('w' or 'a' or 's' or 'd' or 'e' or 'q' or 'r' or 'f' or 'o' or 'p')
-                
-                
             if self.prev_T1_filtered is None:
                 self.prev_T1_filtered = T1
             if self.prev_T2_filtered is None:
                 self.prev_T2_filtered = T2
             if self.prev_yaw_filtered is None:
                 self.prev_yaw_filtered = yaw
-            
+            if self.prev_T11 is None:   
+                self.prev_T11 = T1
+            if self.prev_T12 is None:
+                self.prev_T12 = T1
+            if self.prev_T13 is None:
+                self.prev_T13 = T1
+            if self.prev_T14 is None:
+                self.prev_T14 = T1
+            if self.prev_T21 is None:
+                self.prev_T21 = T2
+            if self.prev_T22 is None:
+                self.prev_T22 = T2
+            if self.prev_T23 is None:
+                self.prev_T23 = T2
+            if self.prev_T24 is None:
+                self.prev_T24 = T2
+
             # Apply low pass filter
-            T1_filtered = 0.1 * T1 + 0.9 * self.prev_T1_filtered
-            T2_filtered = 0.1 * T2 + 0.9 * self.prev_T2_filtered
-            yaw_filtered = 0.1 * yaw + 0.9 * self.prev_yaw_filtered
+            # TODO naret bolsi filter? - mogoc povprecit T1,T2?
+            # moveing avarage filter with 5 trailing smaples
+            T1_filtered = 0.2*T1 + 0.2*self.prev_T11 + 0.2*self.prev_T12 + 0.2*self.prev_T13 + 0.2*self.prev_T14
+            T2_filtered = 0.2*T2 + 0.2*self.prev_T21 + 0.2*self.prev_T22 + 0.2*self.prev_T23 + 0.2*self.prev_T24
+            yaw_filtered = 0.2*yaw + 0.8*self.prev_yaw_filtered
+            #T1_filtered = 0.1 * T1 + 0.9 * self.prev_T1_filtered
+            #T2_filtered = 0.1 * T2 + 0.9 * self.prev_T2_filtered
+            #aw_filtered = 0.1 * yaw + 0.9 * self.prev_yaw_filtered
 
             # Update the previous filtered values for the next call
             self.prev_T1_filtered = T1_filtered
             self.prev_T2_filtered = T2_filtered
             self.prev_yaw_filtered = yaw_filtered
 
+            self.prev_T11 = T1
+            self.prev_T12 = self.prev_T11
+            self.prev_T13 = self.prev_T12
+            self.prev_T14 = self.prev_T13
 
+            self.prev_T21 = T2
+            self.prev_T22 = self.prev_T21
+            self.prev_T23 = self.prev_T22
+            self.prev_T24 = self.prev_T23
+
+            oddaljenostOdTarce = 1
             #Best regulator ever
-            if (currTime - self.oldTime) > 0.05:
-                if(T2_filtered is not None and T2_filtered[0] > 1.4):
+            if (currTime - self.oldTime) > 0.0333:
+                freq = 1/(currTime - self.oldTime)
+                print("frek: ",freq)
 
-                    NaprejNazaj = T2_filtered[0]*13
+                if(T2_filtered is not None and T2_filtered[0] > oddaljenostOdTarce):
+
+                    NaprejNazaj = T2_filtered[0]*10
                     #print("NaprejNazaj: ", NaprejNazaj)
 
-                    LevoDesno = -T2_filtered[1]*70
+                    LevoDesno = (-T2_filtered[1]+0.1)*10
                     #print("LevoDesno: ", LevoDesno)
 
-                    GorDol = (T2_filtered[2]+0.2)*70
+                    GorDol = (T2_filtered[2]+0.2)*10
                     #print("GorDol: ", GorDol)
 
                     #print("Yaw: ",yaw_filtered)
                     print("T2_filtered: ",T2_filtered)
-                    print("T1_filtered: ",T1_filtered)
                     jo = -yaw_filtered*1
 
                     self.tello.send_rc_control(int(LevoDesno), int(NaprejNazaj), int(GorDol), int(jo))
-                elif(T2_filtered is not None and T2_filtered[0] < 1.4):
-                    self.arucoId = self.arucoId + 1
-                    print("Mennjava znacke - Aruco ID: ",self.arucoId)
+                elif(T2_filtered is not None and T2_filtered[0] <  oddaljenostOdTarce):
+                    #self.arucoId = self.arucoId + 1
+                    self.tello.send_rc_control(0, 0, 0, 0)
+                    print("Menjava znacke - Aruco ID: ",self.arucoId)
             
 
                     ##self.tello.send_rc_control(0,20,0,0)

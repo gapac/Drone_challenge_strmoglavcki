@@ -14,6 +14,13 @@ from PIL import ImageTk
 import tkinter as tki
 from tkinter import Toplevel, Scale
 from threading import Thread, Event
+import matplotlib.pyplot as plt
+import PID 
+
+GorDol_save = []
+NaprejNazaj_save = []
+Yaw_save = []
+LevoDesno_save = []
 
 class TelloC:
     def __init__(self):  
@@ -24,8 +31,12 @@ class TelloC:
         self.image_label = tki.Label(self.root)
         self.image_label.pack()
 
-        self.arucoId = 1     
+        self.arucoId = 2
+
         self.tello = Tello()
+        self.error_sum = 0
+        self.prev_error = 0
+
         
         self.frame = None  # frame read from h264decoder and used for pose recognition 
         self.frameCopy = None
@@ -66,7 +77,11 @@ class TelloC:
         self.prev_T23 = None
         self.prev_T24 = None
 
-        
+        self.prev_yaw_1= None
+        self.prev_yaw_2= None
+        self.prev_yaw_3= None
+        self.prev_yaw_4= None
+
 
         self.last_call_T1_filtered = None
 
@@ -157,6 +172,37 @@ class TelloC:
         elif key == 'p':
             self.tello.land()
             self.tello.end
+            # Plotting GorDol
+            plt.subplot(4, 1, 1)
+            plt.plot(GorDol_save)
+            plt.title('GorDol')
+            plt.xlabel('Time')
+            plt.ylabel('Value')
+
+            # Plotting NaprejNazaj
+            plt.subplot(4, 1, 2)
+            plt.plot(NaprejNazaj_save)
+            plt.title('NaprejNazaj')
+            plt.xlabel('Time')
+            plt.ylabel('Value')
+
+            # Plotting Levodesno
+            plt.subplot(4, 1, 3)
+            plt.plot(LevoDesno_save)
+            plt.title('Levodesno')
+            plt.xlabel('Time')
+            plt.ylabel('Value')
+
+            # Plotting Jo
+            plt.subplot(4, 1, 4)
+            plt.plot(Yaw_save)
+            plt.title('Jo')
+            plt.xlabel('Time')
+            plt.ylabel('Value')
+
+            #plt.tight_layout()
+            plt.show()
+            
         
 
     def videoLoop(self):
@@ -313,6 +359,7 @@ class TelloC:
     def controlAll(self, T1, T2, yaw):
         self.controlEnabled = False
         currTime = time.time()
+        
         if self.takeoffEnabled:
             self.takeoffEnabled = False
             self.tello.takeoff()
@@ -322,7 +369,7 @@ class TelloC:
         # Calculate and print FPS every 2 seconds
         if time.time() - self.last_fps_calculation >= 2:
             self.cur_fps = self.frame_count / (time.time() - self.last_fps_calculation)
-            print(f"FPS: {self.cur_fps:.2f}")
+            #print(f"FPS: {self.cur_fps:.2f}")
 
             # Reset the frame count and last FPS calculation time
             self.frame_count = 0
@@ -331,8 +378,9 @@ class TelloC:
             #print('T1: ', T1)
             #print('T2: ', T2)
             #print('yaw: ', yaw)
+            #self.tello.is_flying and
 
-        if self.tello.is_flying and T1 is not None and T2 is not None and yaw is not None and self.cur_fps > 10:
+        if T1 is not None and T2 is not None and yaw is not None and self.cur_fps > 10:
             print(f"FPS: {self.cur_fps:.2f}")
             #self.on_key_press('w' or 'a' or 's' or 'd' or 'e' or 'q' or 'r' or 'f' or 'o' or 'p')
             if self.prev_T1_filtered is None:
@@ -357,13 +405,32 @@ class TelloC:
                 self.prev_T23 = T2
             if self.prev_T24 is None:
                 self.prev_T24 = T2
+            if self.prev_yaw_1 is None:
+                self.prev_yaw_1 = yaw
+            if self.prev_yaw_2 is None:
+                self.prev_yaw_2 = yaw
+            if self.prev_yaw_3 is None:
+                self.prev_yaw_3 = yaw
+            if self.prev_yaw_4 is None:
+                self.prev_yaw_4 = yaw
+
+            
 
             # Apply low pass filter
             # TODO naret bolsi filter? - mogoc povprecit T1,T2?
             # moveing avarage filter with 5 trailing smaples
-            T1_filtered = 0.2*T1 + 0.2*self.prev_T11 + 0.2*self.prev_T12 + 0.2*self.prev_T13 + 0.2*self.prev_T14
+            #print("T1: ",T1)
+            #print("T2: ", T2)
+            #if ((T1.any() == None) or (T2.any() == None) or (yaw == None)):
+             #   T1, T2 = [0, 0, 0]
+             #   yaw = 0
+            
+
+            T1_filtered = 0.5*T1 + 0.3*self.prev_T11 + 0.15*self.prev_T12 + 0.045*self.prev_T13 + 0.005*self.prev_T14
             T2_filtered = 0.2*T2 + 0.2*self.prev_T21 + 0.2*self.prev_T22 + 0.2*self.prev_T23 + 0.2*self.prev_T24
-            yaw_filtered = 0.2*yaw + 0.8*self.prev_yaw_filtered
+            yaw_filtered = 0.2*yaw + 0.2*self.prev_yaw_1 + 0.2*self.prev_yaw_2 + 0.2*self.prev_yaw_3 + 0.2*self.prev_yaw_4
+            
+            #yaw_filtered = 0.2*yaw + 0.8*self.prev_yaw_filtered
             #T1_filtered = 0.1 * T1 + 0.9 * self.prev_T1_filtered
             #T2_filtered = 0.1 * T2 + 0.9 * self.prev_T2_filtered
             #aw_filtered = 0.1 * yaw + 0.9 * self.prev_yaw_filtered
@@ -377,208 +444,132 @@ class TelloC:
             self.prev_T12 = self.prev_T11
             self.prev_T13 = self.prev_T12
             self.prev_T14 = self.prev_T13
+            
 
             self.prev_T21 = T2
             self.prev_T22 = self.prev_T21
             self.prev_T23 = self.prev_T22
             self.prev_T24 = self.prev_T23
 
-            oddaljenostOdTarce = 1
+            self.prev_yaw_1 = yaw
+            self.prev_yaw_2 = self.prev_yaw_1
+            self.prev_yaw_3 = self.prev_yaw_2
+            self.prev_yaw_4 = self.prev_yaw_4
+
+            oddaljenostOdTarce = 1.25#1.25
             #Best regulator ever
             if (currTime - self.oldTime) > 0.0333:
                 freq = 1/(currTime - self.oldTime)
-                print("frek: ",freq)
+                #print("frek: ",freq)
 
-                if(T2_filtered is not None and T2_filtered[0] > oddaljenostOdTarce):
+                # if(T2_filtered==None):
+                #     self.tello.move_back(21)
 
-                    NaprejNazaj = T2_filtered[0]*10
-                    #print("NaprejNazaj: ", NaprejNazaj)
+                if(T2_filtered is not None and T2_filtered[0] > oddaljenostOdTarce and self.arucoId!=0):
+                    
+                    print("T2...: ",T2_filtered)
+                    pidx = PID.PIDRegulator(20, 0.3, 0.3)
+                    pidy = PID.PIDRegulator(20, 0.3, 0.3)
+                    pidz = PID.PIDRegulator(20, 0.3, 0.3)
+                    pidyaw = PID.PIDRegulator(0.5, 0.1, 0.1)
 
-                    LevoDesno = (-T2_filtered[1]+0.1)*10
-                    #print("LevoDesno: ", LevoDesno)
+                    NaprejNazaj = pidx.calculate(-1, -T2_filtered[0])
+                    LevoDesno = pidy.calculate(0.2, T2_filtered[1])
+                    GorDol = pidz.calculate(0.2, -T2_filtered[2])
+                    jo = pidyaw.calculate(0, yaw_filtered)
 
-                    GorDol = (T2_filtered[2]+0.2)*10
-                    #print("GorDol: ", GorDol)
+                    # NaprejNazaj = (T2_filtered[0]-0.6)*10 +  ##-oddaljenostOdTarce
+                    
+                    # #print("NaprejNazaj: ", NaprejNazaj)
+                    # if NaprejNazaj > 20:
+                    #     NaprejNazaj = 20
+                    # #print("GorDol: ", NaprejNazaj)
 
-                    #print("Yaw: ",yaw_filtered)
-                    print("T2_filtered: ",T2_filtered)
-                    jo = -yaw_filtered*1
+                    # LevoDesno = (-T2_filtered[1])*70 #spodaj v funkciji 0 #+0.2
+                    # #print("LevoDesno: ", LevoDesno)
+
+                    # GorDol = (T2_filtered[2]+0.2)*20 #+0.55
+                    # #if GorDol > 25:
+                    # #    GorDol = 25
+                    # #print("GorDol: ", GorDol)
+
+                    # #print("Yaw: ",yaw_filtered)
+                    # #print("T2_filtered: ",T2_filtered)
+                    # jo = -yaw_filtered*0.5
+
+                    GorDol_save.append(GorDol)
+                    NaprejNazaj_save.append(NaprejNazaj)
+                    Yaw_save.append(yaw_filtered)
+                    LevoDesno_save.append(LevoDesno)#LevoDesno
 
                     self.tello.send_rc_control(int(LevoDesno), int(NaprejNazaj), int(GorDol), int(jo))
-                elif(T2_filtered is not None and T2_filtered[0] <  oddaljenostOdTarce):
-                    #self.arucoId = self.arucoId + 1
-                    self.tello.send_rc_control(0, 0, 0, 0)
-                    print("Menjava znacke - Aruco ID: ",self.arucoId)
-            
 
-                    ##self.tello.send_rc_control(0,20,0,0)
-                    #time.sleep(2000)
-                    #self.tello.send_rc_control(0,0,0,0)
-                    #time.sleep(2000)
+
+
+                elif(T2_filtered is not None and T2_filtered[0] <  oddaljenostOdTarce and T2_filtered[1] < 0.09 and T2_filtered[2] < 0.09 and yaw_filtered < 3 and self.arucoId!=0 ):#TODOlahk dodas pogoje da gre naprej samo ko je cist poravnan
+                    self.tello.send_rc_control(int(0), int(0), int(10), int(0))
+                    self.prev_T11 = None
+                    self.prev_T12 = None
+                    self.prev_T13 = None
+                    self.prev_T14 = None
+
+                    self.prev_T21 = None
+                    self.prev_T22 = None
+                    self.prev_T23 = None
+                    self.prev_T24 = None
+                    #for i in  range(20):
+                    #time.sleep(1)
+                    self.tello.move_forward(150)
                     #self.tello.land()
+                    self.arucoId = self.arucoId + 1 ###pazi plus 2
+                    print("Menjava znacke - Aruco ID: ",self.arucoId)
+
+                    if(self.arucoId == 3):
+                        self.tello.flip_right()
+                        self.tello.rotate_clockwise(180)##TODO odvisno na kiri progi si spremeni smer da ne zaznas nasprotnikove tarce
+                        self.tello.move_left(150)
+                    if(self.arucoId == 5):
+                        #self.tello.move_forward(25)
+                        self.tello.flip_forward()
+                        self.tello.move_right(100)##TODO odvisno na kiri progi si spremeni smer da ne zaznas nasprotnikove tarce
+                        self.arucoId = 0
 
 
-            # Check if T1_filtered is less than 2 cm away from its last filtered value
-            #if self.last_call_T1_filtered is not None:
-            #    distance = np.linalg.norm(T1_filtered - self.last_call_T1_filtered)
-            #    if distance < 0.01:  # Less than 1 cm
-            #        if self.Step_1 and self.state==0:
-            #            self.Step_1 = False
-            #            T1_f_cm = [int(x * 100) for x in T1_filtered]
-            #            T2_f_cm = [int(x * 100) for x in T2_filtered]
-            #            print("T1_f_cm",T1_f_cm)
-            #            print("T2_f_cm",T2_f_cm)
-            #           self.tello.curve_xyz_speed(T1_f_cm[0], T1_f_cm[1], T1_f_cm[2], T2_f_cm[0], T2_f_cm[1], T2_f_cm[2], 10)
 
-            # Update the last call filtered value of T1 for the next comparison
+                elif(T2_filtered is not None and self.arucoId==0):
+                    print("T2...: ",T2_filtered)
+                    NaprejNazaj = (T2_filtered[0])*10 
+                    if NaprejNazaj > 15:
+                        NaprejNazaj = 15
+
+                    LevoDesno = (-T2_filtered[1]+0.2)*70 #spodaj v funkciji 0
+
+                    GorDol = (T2_filtered[2])*20
+
+                    jo = -yaw_filtered*0.5
+
+                    GorDol_save.append(GorDol)
+                    NaprejNazaj_save.append(NaprejNazaj)
+                    Yaw_save.append(yaw_filtered)
+                    LevoDesno_save.append(LevoDesno)#LevoDesno
+
+                    self.tello.send_rc_control(int(LevoDesno), int(NaprejNazaj), int(GorDol), int(jo))
+
+                    if abs(LevoDesno)<0.3 and abs(NaprejNazaj)<0.3:
+                        self.tello.land()
+                    
+
+
             self.oldTime = currTime
 
             self.last_call_T1_filtered = T1_filtered
         self.controlEnabled = True
 
-    def heightC(self,T,yaw):
-        currTime = time.time()
-        error = T[2]
-        premik = abs(error)
-        if premik > 0.6:
-            premik = 0.6
-
-        # Premik gor
-        if error >= 0.2:      
-            resp1 = self.tello.move_up(int(premik*100))  
-            if resp1:
-                print('OK!')
-                self.state = 2
-            else:
-                print('Ni poslano')
-                time.sleep(0.5)
-                self.state = 1
-            self.oldTime = currTime
-
-        # Premik dol
-        elif error <= -0.2: 
-            resp2 = self.tello.move_down(int(premik*100))
-            if resp2:
-                print('OK!')
-                self.state = 2
-            else:
-                print('Ni poslano')
-                time.sleep(0.5)
-                self.state = 1
-            self.oldTime = currTime
-        else:
-            self.state = 2
-
-    def distC(self,T,yaw,ref):
-        currTime = time.time()
-        error = (ref-T[0])
-
-        premik = abs(error)
-        if premik > 0.4:
-            premik = 0.4
-
-        # Premik nazaj
-        if error >= 0.2:  
-            print("Premik nazaj")
-            resp1 = self.tello.move_back(int(premik*100))  
-            if resp1:
-                print('OK!')
-                self.state = 3
-            else:
-                print('Ni poslano')
-                time.sleep(0.5)
-                self.state = 2
-            self.oldTime = currTime
-
-        # Premik naprej
-        elif error <= -0.2: 
-            print("Premik naprej")
-            resp2 = self.tello.move_forward(int(premik*100))
-            if resp2:
-                print('OK!')
-                self.state = 3
-            else:
-                print('Ni poslano')
-                time.sleep(0.5)
-                self.state = 2
-            self.oldTime = currTime
-        else:
-            self.state = 3
-
-    def lefrigC(self,T,yaw):
-        currTime = time.time()
-        error = T[1]
-        premik = abs(error)
-        if premik > 0.4:
-            premik = 0.4
-
-        # Premik desno
-        if error <= -0.2:   
-            resp1 = self.tello.move_right(int(premik*100))  
-            if resp1:
-                print('OK!')
-                self.state = 4
-            else:
-                print('Ni poslano')
-                time.sleep(0.5)
-                self.state = 3
-            self.oldTime = currTime
-
-        # Premik levo
-        elif error >= 0.2: 
-            resp2 = self.tello.move_left(int(premik*100))
-            if resp2:
-                print('OK!')
-                self.state = 4
-            else:
-                print('Ni poslano') 
-                time.sleep(0.5)
-                self.state = 3
-            self.oldTime = currTime
-        else:
-            self.state = 4
-
-    def yawC(self,T,yaw):
-        currTime = time.time()
-        error = yaw
-        zasuk = abs(error)
-        if zasuk > 20 and abs(T[1]) < 0.3:
-            zasuk = 20
-        elif abs(T[1]) > 0.3:
-            zasuk = 0
-            self.state = 3
-            self.oldTime = currTime
-
-        if zasuk > 0:
-            # Zasuk v  smeri urinega kazalca 
-            if error < -3:     
-                resp1 = self.tello.rotate_clockwise(int(round(zasuk)))
-                if resp1:
-                    print('OK!')
-                    self.state = 0 #1 !!!
-                else:
-                    print('Ni poslano')
-                    time.sleep(0.5)
-                    self.state = 4
-                self.oldTime = currTime
-
-            # Zasuk v nasprotni smeri urinega kazalca 
-            elif error > 3: 
-                resp2 = self.tello.rotate_counter_clockwise(int(round(zasuk)))
-                if resp2:
-                    print('OK!')
-                    self.state = 0 #1 !!!
-                else:
-                    print('Ni poslano')
-                    time.sleep(0.5)
-                    self.state = 4
-                self.oldTime = currTime
-            else:
-                self.state = 0 #1 !!!
 
     def onClose(self):
         print("[INFO] closing...")
         self.stopEvent.set()
         del self.tello
         self.root.quit()
+    
 

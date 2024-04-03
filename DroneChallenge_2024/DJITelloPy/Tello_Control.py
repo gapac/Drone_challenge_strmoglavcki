@@ -469,7 +469,7 @@ class TelloC:
                     
                     print("T2...: ",T2_filtered)
                     pidx = PID.PIDRegulator(20, 0.3, 0.3)
-                    pidy = PID.PIDRegulator(20, 0.3, 0.3)
+                    pidy = PID.PIDRegulator(20, 0.3, 0.3)    #ta del je treba naret sam enktrat, ce ne nedela I, D!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                     pidz = PID.PIDRegulator(20, 0.3, 0.3)
                     pidyaw = PID.PIDRegulator(0.5, 0.1, 0.1)
 

@@ -562,6 +562,9 @@ class Tello:
         # Something it takes a looooot of time to take off and return a succesful takeoff.
         # So we better wait. Otherwise, it would give us an error on the following calls.
         self.send_control_command("takeoff", timeout=Tello.TAKEOFF_TIMEOUT)
+        self.move_left(60)
+        self.move_up(40)
+        self.move_forward(20)
         self.is_flying = True
 
     def land(self):

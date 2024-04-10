@@ -31,7 +31,7 @@ class TelloC:
         self.image_label = tki.Label(self.root)
         self.image_label.pack()
 
-        self.arucoId = 2
+        self.arucoId = 1
 
         self.tello = Tello()
         self.error_sum = 0
@@ -146,8 +146,8 @@ class TelloC:
     def on_key_press(self,event):
         key = event.keysym 
         print("Key: ",key)
-        if key == 'w':
-            self.tello.move_forward(30)
+        if key == 'q':
+            self.arucoId = self.arucoId + 1
         elif key == 's':
             self.tello.move_back(30)        
         elif key == 'a':
@@ -468,21 +468,38 @@ class TelloC:
                 if(T2_filtered is not None and T2_filtered[0] > oddaljenostOdTarce and self.arucoId!=0):
                     
                     print("T2...: ",T2_filtered)
-                    pidx = PID.PIDRegulator(20, 0.3, 0.3)
-                    pidy = PID.PIDRegulator(20, 0.3, 0.3)    #ta del je treba naret sam enktrat, ce ne nedela I, D!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                    pidz = PID.PIDRegulator(20, 0.3, 0.3)
-                    pidyaw = PID.PIDRegulator(0.5, 0.1, 0.1)
+                    """########## LEVAAAAAAA!!  ZAMENJAJ SE VRTENJE##############"""
+                    # pidx = PID.PIDRegulator(30, 3, 7)
+                    # pidy = PID.PIDRegulator(60, 5, 5)    #ta del je treba naret sam enktrat, ce ne nedela I, D!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    # pidz = PID.PIDRegulator(30, 5, 5)
+                    # pidyaw = PID.PIDRegulator(0.2, 2, 0.1)
+                    # LevoDesno = pidy.calculate(0.2, T2_filtered[1])
+
+                    """########## DESNAAAAAA!! ZAMENJAJ SE VRTENJE ##############"""
+                    pidx = PID.PIDRegulator(30, 3, 7)
+                    pidy = PID.PIDRegulator(60, 5, 5)    #ta del je treba naret sam enktrat, ce ne nedela I, D!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                    pidz = PID.PIDRegulator(30, 5, 5)
+                    pidyaw = PID.PIDRegulator(0.2, 2, 0.1)
+                    LevoDesno = pidy.calculate(0.1, T2_filtered[1])
+
+
 
                     NaprejNazaj = pidx.calculate(-1, -T2_filtered[0])
-                    LevoDesno = pidy.calculate(0.2, T2_filtered[1])
+                    if NaprejNazaj > 20:
+                        NaprejNazaj = 20
                     GorDol = pidz.calculate(0.2, -T2_filtered[2])
                     jo = pidyaw.calculate(0, yaw_filtered)
+                    if jo > 10:
+                        jo = 10
+                    if jo < -10:
+                        jo =-10
 
                     # NaprejNazaj = (T2_filtered[0]-0.6)*10 +  ##-oddaljenostOdTarce
                     
                     # #print("NaprejNazaj: ", NaprejNazaj)
                     # if NaprejNazaj > 20:
                     #     NaprejNazaj = 20
+
                     # #print("GorDol: ", NaprejNazaj)
 
                     # LevoDesno = (-T2_filtered[1])*70 #spodaj v funkciji 0 #+0.2
@@ -505,8 +522,8 @@ class TelloC:
                     self.tello.send_rc_control(int(LevoDesno), int(NaprejNazaj), int(GorDol), int(jo))
 
 
-
-                elif(T2_filtered is not None and T2_filtered[0] <  oddaljenostOdTarce and T2_filtered[1] < 0.09 and T2_filtered[2] < 0.09 and yaw_filtered < 3 and self.arucoId!=0 ):#TODOlahk dodas pogoje da gre naprej samo ko je cist poravnan
+                #------------------------------------------------------------PAZI ODDALJENOST OD TARCE----------------------------------------------
+                elif(T2_filtered is not None and T2_filtered[0] <  oddaljenostOdTarce+0.1 and T2_filtered[1] < 0.09 and T2_filtered[2] < 0.09 and yaw_filtered < 3 and self.arucoId!=0 ):#TODOlahk dodas pogoje da gre naprej samo ko je cist poravnan
                     self.tello.send_rc_control(int(0), int(0), int(10), int(0))
                     self.prev_T11 = None
                     self.prev_T12 = None
@@ -519,20 +536,34 @@ class TelloC:
                     self.prev_T24 = None
                     #for i in  range(20):
                     #time.sleep(1)
-                    self.tello.move_forward(150)
+                    self.tello.move_forward(120)
+                    if self.arucoId==1:
+                        self.tello.rotate_clockwise(20)
+                        #self.tello.move_right(30)
+                    elif self.arucoId==2:
+                        #self.tello.rotate_counter_clockwise(20)
+                        self.tello.move_left(50)
+                    elif self.arucoId==4:
+                        self.tello.rotate_clockwise(15)
+                        #self.tello.move_right(30)
                     #self.tello.land()
-                    self.arucoId = self.arucoId + 1 ###pazi plus 2
-                    print("Menjava znacke - Aruco ID: ",self.arucoId)
+                    
 
                     if(self.arucoId == 3):
                         self.tello.flip_right()
-                        self.tello.rotate_clockwise(180)##TODO odvisno na kiri progi si spremeni smer da ne zaznas nasprotnikove tarce
-                        self.tello.move_left(150)
+                        self.tello.rotate_clockwise(160)##TODO odvisno na kiri progi si spremeni smer da ne zaznas nasprotnikove tarce
+                        #self.tello.rotate_counter_clockwise(200) ###LEVAAAAAA
+                        #self.tello.move_left(150)
                     if(self.arucoId == 5):
                         #self.tello.move_forward(25)
                         self.tello.flip_forward()
-                        self.tello.move_right(100)##TODO odvisno na kiri progi si spremeni smer da ne zaznas nasprotnikove tarce
+                        #self.tello.move_right(60)##TODO odvisno na kiri progi si spremeni smer da ne zaznas nasprotnikove tarce
+                        self.tello.rotate_clockwise(40)##TODO odvisno na kiri progi si spremeni smer da ne zaznas nasprotnikove tarce
+
                         self.arucoId = 0
+
+                    self.arucoId = self.arucoId + 1 ###ččččččččččččččččččččč5pazi plus 2
+                    print("Menjava znacke - Aruco ID: ",self.arucoId)
 
 
 
@@ -548,15 +579,11 @@ class TelloC:
 
                     jo = -yaw_filtered*0.5
 
-                    GorDol_save.append(GorDol)
-                    NaprejNazaj_save.append(NaprejNazaj)
-                    Yaw_save.append(yaw_filtered)
-                    LevoDesno_save.append(LevoDesno)#LevoDesno
-
                     self.tello.send_rc_control(int(LevoDesno), int(NaprejNazaj), int(GorDol), int(jo))
 
                     if abs(LevoDesno)<0.3 and abs(NaprejNazaj)<0.3:
-                        self.tello.land()
+                        #self.tello.land()
+                        self.tello.emergency()
                     
 
 
